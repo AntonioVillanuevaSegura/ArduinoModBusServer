@@ -22,12 +22,18 @@ CS  -->  D10 arduino nano (D5) MKR_1010     RST
 INT    
   
 */
+#define I2C_ADDRESS 0x20 //mcp23017 expander
+byte input=0;
 
 #define N_HOLDING_REGISTERS 2
 #define HOLD_REG_ADDRESS 0x00
 #define N_COILS 16
 #define COIL_ADDRESS 0x00
+#define N_INPUTS 1
+#define INPUTS_ADDRESS 0x00
+
 //*************************************************************************************** 
+#include "expander.h" 
 #include <SPI.h>
 #include <Ethernet.h>
 //#include <Ethernet2.h>
@@ -36,6 +42,8 @@ INT
 
 EthernetServer ethServer(502);//Server on port 502
 ModbusTCPServer modbusTCPServer; //TCP modbus server
+
+DFRobot_MCP23017 mcp(Wire, /*addr =*/I2C_ADDRESS);//Expander MCP 23017
 
 
 #define LED LED_BUILTIN
@@ -79,10 +87,15 @@ void setup() {
   delay(500);
 
   //Declare modbus struct holding_registers , coils 
-  configureModbus(HOLD_REG_ADDRESS ,N_HOLDING_REGISTERS,COIL_ADDRESS,N_COILS);
+  configureModbus();
 
   Serial.print("Ethernet Modbus on ");
   Serial.println (ip);
+
+  delay(50);
+  
+  expanderSetup ( &mcp );//mcp23017 set Up
+  
   delay(50);
 }
 //*************************************************************************************** 
@@ -109,17 +122,42 @@ void loop() {
 
       modbusTCPServer.poll();//Poll Modbus TCP request while client connected
     //Serial.println (modbusTCPServer.holdingRegisterRead(0x0000),BIN);//long holdingRegisterRead(int address);
-
+    printIndex ();
     getHoldingRegister(HOLD_REG_ADDRESS);//Read first holding register on address 0x0000
     getHoldingRegister(HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
     getCoils(COIL_ADDRESS,N_COILS);  
-    getInputs(COIL_ADDRESS,N_COILS);  
+    getInputs(INPUTS_ADDRESS,N_INPUTS);  
+    
     }
  
     Serial.println("Client disconnected");
     digitalWrite(LED_BUILTIN, LOW ); //LED OFF  CLIENT
   }
+
+ // writeInputs(INPUTS_ADDRESS);
+ if ((readPort(&mcp,'A'))!= input ){
+  Serial.println ("Change ");
+  input=readPort(&mcp,'A');
+  writeInputs(INPUTS_ADDRESS,input);
+  getInputs(INPUTS_ADDRESS,8);
+  
+ }
+  delay(500);
  
+}
+//*************************************************************************************** 
+String zeroComplement(String number, int base){
+  String zeros="";
+  for ( unsigned i=0 ; i< (base - ( number.length()) );i++ ){zeros+='0';} //Print 0's
+  zeros+=number;
+  
+  number="";
+  for (unsigned i=0;i<zeros.length();i++){
+  number+=zeros[i];
+  }
+  //Serial.println (zeros);
+  return zeros;
+  
 }
 //*************************************************************************************** 
 String longToString (long reg){
@@ -138,7 +176,10 @@ String longToString (long reg){
   
   
 }
-
+//*************************************************************************************** 
+int writeInputs(int address,byte input){//Read i2c expander 8 REAL inputs and copy in inputs modbus system  
+  modbusTCPServer.discreteInputWrite(address,input );
+}
 //*************************************************************************************** 
 void getCoils(int address,int n){//int coilRead(int address);
   Serial.print ("\nCoils Read  ( ");
@@ -150,9 +191,7 @@ void getCoils(int address,int n){//int coilRead(int address);
   int valeur(-1);
 
   for (int coil=n-1;coil>=0;coil--){
-    //Serial.print (coilRead(address+coil);)
     valeur=modbusTCPServer.coilRead(address+coil);
-    //if (valeur){Serial.println (valeur);}
     Serial.print(valeur);
   }
   Serial.println ("");
@@ -160,22 +199,19 @@ void getCoils(int address,int n){//int coilRead(int address);
 }
 //*************************************************************************************** 
 void getInputs(int address,int n){//int discreteInputRead(int address);
-  Serial.print ("\nInputs Read ( ");
-  Serial.print (address);
-  Serial.print (" to ");
-  Serial.print (address+n);  
-  Serial.print (" ) = ");
-  
-  int valeur(-1);
 
-  for (int input=n-1;input>=0;input--){
-    valeur=modbusTCPServer.discreteInputRead(address+input);
-    Serial.print (valeur);
-    //if (valeur){Serial.println (valeur);}
+  Serial.print ("\nInputs Read             = ");
+  int valeur= modbusTCPServer.discreteInputRead(address);
+  //Serial.println(input,BIN);
+  Serial.println (zeroComplement(String(valeur,BIN),16));
+}
 
+//*************************************************************************************** 
+void printIndex (){//Print bit index position
+  Serial.print("                          ");  
+  for (int i=0;i<16;i++){
+    Serial.print (i,HEX);
   }
-  Serial.println ("");
-  
 }
 
 //*************************************************************************************** 
@@ -186,32 +222,25 @@ void getHoldingRegister(int address){
   long reg = modbusTCPServer.holdingRegisterRead(address);//long holdingRegisterRead(int address);
  
   String tmp= String(reg,BIN);//Base BIN
-  String zeros="";
-  for ( unsigned i=0 ; i< (16-tmp.length());i++ ){zeros+='0';} //Print 0's
-  zeros+=tmp;
 
-  tmp="";
-  for (unsigned i=0;i<zeros.length();i++){
-    tmp+=zeros[i];
-  }
- Serial.println (zeros);
-  
+  Serial.println (zeroComplement(tmp, 16));
 }
 //*************************************************************************************** 
-void configureModbus(int hold_reg_address ,int holding_registers,int coil_address, int coils){
+void configureModbus(){
+
     //Holding Registers
-   if ( ! modbusTCPServer.configureHoldingRegisters(hold_reg_address, holding_registers)){Serial.println (F("Error on create Holding Reg"));}
+   if ( ! modbusTCPServer.configureHoldingRegisters(HOLD_REG_ADDRESS, N_HOLDING_REGISTERS)){Serial.println (F("Error on create Holding Reg"));}
    else{Serial.println ("Holding Registers OK");}
 
     //Coils
 
     //int configureCoils(int startAddress, int nb);
-   if ( ! modbusTCPServer. configureCoils( coil_address, coils)){Serial.println (F("Error on create Coils"));}
+   if ( ! modbusTCPServer. configureCoils( COIL_ADDRESS, N_COILS)){Serial.println (F("Error on create Coils"));}
    else{Serial.println ("Coils OK");}    
 
     //Inputs
     //int configureDiscreteInputs(int startAddress, int nb);
-  if ( ! modbusTCPServer. configureDiscreteInputs( coil_address, coils)){Serial.println (F("Error on create Inputs"));}
+  if ( ! modbusTCPServer. configureDiscreteInputs( INPUTS_ADDRESS,N_INPUTS)){Serial.println (F("Error on create Inputs"));}
   else{Serial.println ("Inputs OK");} 
 
 }
