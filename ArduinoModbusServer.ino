@@ -112,7 +112,7 @@ void loop() {
   EthernetClient client = ethServer.available();
    
   if (client) { // a new client connected
-    digitalWrite(LED_BUILTIN, HIGH ); //Client LED
+    digitalWrite(LED_BUILTIN, HIGH ); //Client LED Client connected
     Serial.println("Client connected !");
  
     // let the Modbus TCP accept the connection 
@@ -120,32 +120,33 @@ void loop() {
  
    if(client.connected()) {// loop while the client is connected
 
-      modbusTCPServer.poll();//Poll Modbus TCP request while client connected
-    //Serial.println (modbusTCPServer.holdingRegisterRead(0x0000),BIN);//long holdingRegisterRead(int address);
-    printIndex ();
+    modbusTCPServer.poll();//Poll Modbus TCP request while client connected
+
+    //Afficher les données sur la console série
+    printIndex ();//Index HEXA
     getHoldingRegister(HOLD_REG_ADDRESS);//Read first holding register on address 0x0000
     getHoldingRegister(HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
-    getCoils(COIL_ADDRESS,N_COILS);  
-    getInputs(INPUTS_ADDRESS,N_INPUTS);  
+    getCoils(COIL_ADDRESS,N_COILS); //Read Coils 
+    getInputs(INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
     
     }
  
     Serial.println("Client disconnected");
-    digitalWrite(LED_BUILTIN, LOW ); //LED OFF  CLIENT
+    digitalWrite(LED_BUILTIN, LOW ); //LED OFF CLIENT Client disconnected
   }
 
- // writeInputs(INPUTS_ADDRESS);
- if ((readPort(&mcp,'A'))!= input ){
-  Serial.println ("Change ");
-  input=readPort(&mcp,'A');
-  writeInputs(INPUTS_ADDRESS,input);
-  getInputs(INPUTS_ADDRESS,8);
+  //S'il y a des changements aux entrées réelles (i2c MCP23017), affichez-les sur la console série.ttyACM0
+  if ((readPort(&mcp,'A'))!= input ){
+    input=readPort(&mcp,'A');
+    writeInputs(INPUTS_ADDRESS,input);
+    getInputs(INPUTS_ADDRESS,8);
   
- }
+  }
   delay(500);
  
 }
 //*************************************************************************************** 
+//Une fonction pour compléter le nombre de 0's dans une expression BINARIE  base=8 ou 16 p.e
 String zeroComplement(String number, int base){
   String zeros="";
   for ( unsigned i=0 ; i< (base - ( number.length()) );i++ ){zeros+='0';} //Print 0's
@@ -159,23 +160,7 @@ String zeroComplement(String number, int base){
   return zeros;
   
 }
-//*************************************************************************************** 
-/*
-String longToString (long reg){
-  //Long 4 bytes 4*8=32
-  String tmp=String(reg,BIN);
 
-  if (tmp.length() <16){ //0 -31 bits
-    String zeros="";
-      for (int i=0; i<16-tmp.length();i++){
-        zeros+='0';
-      }
-
-    zeros+=tmp;
-  
-  }
-}
-*/
 //*************************************************************************************** 
 //Lire les entrées MCP2317 réelles et les copier sur modbus "discreteInputWrite"
 int writeInputs(int address,byte input){ 
