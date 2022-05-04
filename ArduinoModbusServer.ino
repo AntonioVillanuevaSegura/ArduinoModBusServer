@@ -160,6 +160,7 @@ String zeroComplement(String number, int base){
   
 }
 //*************************************************************************************** 
+/*
 String longToString (long reg){
   //Long 4 bytes 4*8=32
   String tmp=String(reg,BIN);
@@ -171,16 +172,17 @@ String longToString (long reg){
       }
 
     zeros+=tmp;
-    
+  
   }
-  
-  
 }
+*/
 //*************************************************************************************** 
-int writeInputs(int address,byte input){//Read i2c expander 8 REAL inputs and copy in inputs modbus system  
+//Lire les entrées MCP2317 réelles et les copier sur modbus "discreteInputWrite"
+int writeInputs(int address,byte input){ 
   modbusTCPServer.discreteInputWrite(address,input );
 }
 //*************************************************************************************** 
+//afficher les coils  "coilRead" au niveau de la console série
 void getCoils(int address,int n){//int coilRead(int address);
   Serial.print ("\nCoils Read  ( ");
   Serial.print (address);
@@ -198,23 +200,26 @@ void getCoils(int address,int n){//int coilRead(int address);
   
 }
 //*************************************************************************************** 
-void getInputs(int address,int n){//int discreteInputRead(int address);
 
-  Serial.print ("\nInputs Read             = ");
+//Lire les entrées modbus "discreteInputRead" à afficher sur le bus série ttyACM0
+void getInputs(int address,int n){
+
+  Serial.print ("\nInputs Read    (Real)   = "); 
   int valeur= modbusTCPServer.discreteInputRead(address);
-  //Serial.println(input,BIN);
   Serial.println (zeroComplement(String(valeur,BIN),16));
 }
 
 //*************************************************************************************** 
-void printIndex (){//Print bit index position
+//Imprime un en-tête hexadécimal, pour indiquer la position du bit
+void printIndex (){
   Serial.print("                          ");  
-  for (int i=0;i<16;i++){
+  for (int i=15;i>=0;i--){
     Serial.print (i,HEX);
   }
 }
 
 //*************************************************************************************** 
+//afficher le holding Register "holdingRegisterRead" au niveau de la console série
 void getHoldingRegister(int address){
   Serial.print ("\nholdingRegisterRead (");
   Serial.print (address);
