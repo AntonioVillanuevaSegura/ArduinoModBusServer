@@ -3,6 +3,9 @@
   https://www.arduino.cc/reference/en/libraries/arduinomodbus/
   https://tutoduino.fr/tutoriels/arduino-modbus-tcp/
 
+video test ARDUINO MKR WIFI 1010
+https://www.youtube.com/watch?v=NBX_xE0cCc8&feature=youtu.be
+
 ARDUINO NANO 
 A5 SCL Yellow
 A4 SDA Green
@@ -23,12 +26,14 @@ INT
   
 */
 #define I2C_ADDRESS 0x20 //mcp23017 expander
-byte input=0;
+byte input=0; //S'il y a des changements aux entrées réelles (i2c MCP23017), affichez-les sur la console série.ttyACM0
 
 #define N_HOLDING_REGISTERS 2
 #define HOLD_REG_ADDRESS 0x00
+
 #define N_COILS 16
 #define COIL_ADDRESS 0x00
+
 #define N_INPUTS 1
 #define INPUTS_ADDRESS 0x00
 
@@ -36,15 +41,12 @@ byte input=0;
 #include "expander.h" 
 #include <SPI.h>
 #include <Ethernet.h>
-//#include <Ethernet2.h>
-//#include <ArduinoRS485.h> // ArduinoModbus depends  ArduinoRS485 library
 #include <ArduinoModbus.h>
 
 EthernetServer ethServer(502);//Server on port 502
 ModbusTCPServer modbusTCPServer; //TCP modbus server
 
 DFRobot_MCP23017 mcp(Wire, /*addr =*/I2C_ADDRESS);//Expander MCP 23017
-
 
 #define LED LED_BUILTIN
 //***************************************************************************************  
@@ -123,13 +125,13 @@ void loop() {
     modbusTCPServer.poll();//Poll Modbus TCP request while client connected
 
     //Afficher les données sur la console série
-    printIndex ();//Index HEXA
+    printIndex ();//Index HEXA ,Affiche un index indiquant les positions des bits 
     getHoldingRegister(HOLD_REG_ADDRESS);//Read first holding register on address 0x0000
     getHoldingRegister(HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
     getCoils(COIL_ADDRESS,N_COILS); //Read Coils 
     getInputs(INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
 
-    setOutputs(COIL_ADDRESS );
+    setOutputs(COIL_ADDRESS );//Le client a accede, nous mettons à jour les sorties , les relais
     
     }
  
