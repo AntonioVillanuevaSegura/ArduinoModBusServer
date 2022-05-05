@@ -113,7 +113,7 @@ void loop() {
    
   if (client) { // a new client connected
     digitalWrite(LED_BUILTIN, HIGH ); //Client LED Client connected
-    Serial.println("Client connected !");
+    Serial.println("\nClient connected !");
  
     // let the Modbus TCP accept the connection 
     modbusTCPServer.accept(client);
@@ -128,10 +128,12 @@ void loop() {
     getHoldingRegister(HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
     getCoils(COIL_ADDRESS,N_COILS); //Read Coils 
     getInputs(INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
+
+    setOutputs(COIL_ADDRESS );
     
     }
  
-    Serial.println("Client disconnected");
+    Serial.println("\nClient disconnected");
     digitalWrite(LED_BUILTIN, LOW ); //LED OFF CLIENT Client disconnected
   }
 
@@ -185,7 +187,6 @@ void getCoils(int address,int n){//int coilRead(int address);
   
 }
 //*************************************************************************************** 
-
 //Lire les entrées modbus "discreteInputRead" à afficher sur le bus série ttyACM0
 void getInputs(int address,int n){
 
@@ -216,6 +217,7 @@ void getHoldingRegister(int address){
   Serial.println (zeroComplement(tmp, 16));
 }
 //*************************************************************************************** 
+//We configure the modbus system Holding Registers , Coils , Inputs ...
 void configureModbus(){
 
     //Holding Registers
@@ -223,7 +225,6 @@ void configureModbus(){
    else{Serial.println ("Holding Registers OK");}
 
     //Coils
-
     //int configureCoils(int startAddress, int nb);
    if ( ! modbusTCPServer. configureCoils( COIL_ADDRESS, N_COILS)){Serial.println (F("Error on create Coils"));}
    else{Serial.println ("Coils OK");}    
@@ -233,4 +234,21 @@ void configureModbus(){
   if ( ! modbusTCPServer. configureDiscreteInputs( INPUTS_ADDRESS,N_INPUTS)){Serial.println (F("Error on create Inputs"));}
   else{Serial.println ("Inputs OK");} 
 
+}
+//*************************************************************************************** 
+//The modbus client activates the coils, then we activate the expander bus outputs the electrical relays
+void setOutputs(int address ){//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+
+  uint8_t value=0x00;//8 coils
+
+  for (int coil=7;coil>=0;coil--){//read 8 modbus coils (coilRead) 
+    value =value<<1;//rotate << left
+    //value += ( (modbusTCPServer.coilRead(address+coil)>0) ? 1 : 0 ) ; //Read actual coil
+    value += modbusTCPServer.coilRead(address+coil) ; //Read coil
+    delay(25);
+  }
+
+  //We send the byte read from the modbus to the expander bus
+  //void setPort(DFRobot_MCP23017 *mcp,uint8_t *value)
+  setPort(&mcp,&value); //Set MCP23017 Physical Relays 
 }
