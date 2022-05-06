@@ -38,19 +38,31 @@ byte input=0; //S'il y a des changements aux entrées réelles (i2c MCP23017), a
 #define INPUTS_ADDRESS 0x00
 
 //*************************************************************************************** 
-#include "expander.h" 
+
 #include <SPI.h>
 #include <Ethernet.h>
 #include <ArduinoModbus.h>
+
+
+#include "expander.h" 
+
+//Choisissez la carte à compiler
+
+#define ARDUINO_MKR_WIFI_1010
+//#define ARDUINO_NANO 
 
 EthernetServer ethServer(502);//Server on port 502
 ModbusTCPServer modbusTCPServer; //TCP modbus server
 
 DFRobot_MCP23017 mcp(Wire, /*addr =*/I2C_ADDRESS);//Expander MCP 23017
 
+#include "Adafruit_EEPROM_I2C.h"
+Adafruit_EEPROM_I2C i2ceeprom;
+
 #define LED LED_BUILTIN
 //***************************************************************************************  
 void setup() {
+
 
   pinMode(LED_BUILTIN, OUTPUT); //LED 
   
@@ -64,7 +76,15 @@ void setup() {
 
   while (!Serial){} //Wait for Serial Debug 
 
-  Ethernet.init(5) ; //PIN 5 on MKR WIFI 1010
+  #if defined ARDUINO_MKR_WIFI_1010
+    Serial.println ("ARDUINO_MKR_WIFI_1010");
+    Ethernet.init(5) ; //PIN 5 on MKR WIFI 1010  
+  #else
+    Serial.println ("ARDUINO_NANO");  
+    Ethernet.init (10);//D6 on arduino ..... CS pin
+  #endif 
+  
+  //Ethernet.init(5) ; //PIN 5 on MKR WIFI 1010
   //Ethernet.init (10);//D6 on arduino ..... CS pin
 
   Ethernet.begin(mac, ip);  // Start Ethernet connection
@@ -93,12 +113,16 @@ void setup() {
 
   Serial.print("Ethernet Modbus on ");
   Serial.println (ip);
+  
+  expanderSetup ( &mcp );//mcp23017 setup
+  
+  //i2c EEPROM FM24C16B 2077748 setup
+  if (i2ceeprom.begin(0x50)) { Serial.println("Found I2C EEPROM");}
+  else {Serial.println ("I2C EEPROM not found ");while (true){ };}
 
-  delay(50);
-  
-  expanderSetup ( &mcp );//mcp23017 set Up
-  
-  delay(50);
+  //Read i2c EEPROM FM24C16B OUTs
+
+  setCoils(0x00,8, i2ceeprom.read(0x0));
 }
 //*************************************************************************************** 
 void loop() {
@@ -188,6 +212,29 @@ void getCoils(int address,int n){//int coilRead(int address);
   Serial.println ("");
   
 }
+
+//*************************************************************************************** 
+//Récupère l'état des OUTs de la mémoire et les écrit dans les coils modbus
+void setCoils(int address,int n, uint8_t value){//int coilWrite(int address, uint8_t value);
+   Serial.print ("\nWrite OUT's from i2c EEPROM = 0x");
+   Serial.print (value,HEX);
+   Serial.print (" ");Serial.println (value,BIN);
+
+
+  //We send the byte read from the modbus to the expander bus
+  //void setPort(DFRobot_MCP23017 *mcp,uint8_t *value)
+  setPort(&mcp,&value); //Set MCP23017 Physical Relays 
+  
+ 
+  for (int coil=n-1;coil>=0;coil--){
+    uint8_t puiss= (1 << coil);
+    uint8_t state=( (puiss & value) >0 ? 1:0 );
+    modbusTCPServer.coilWrite(address+coil, state);
+    delay(10);
+    
+  }
+
+}
 //*************************************************************************************** 
 //Lire les entrées modbus "discreteInputRead" à afficher sur le bus série ttyACM0
 void getInputs(int address,int n){
@@ -253,4 +300,8 @@ void setOutputs(int address ){//Physical outputs of the expander bus MCP23017 ..
   //We send the byte read from the modbus to the expander bus
   //void setPort(DFRobot_MCP23017 *mcp,uint8_t *value)
   setPort(&mcp,&value); //Set MCP23017 Physical Relays 
+
+ //Set the i2c EEPROM FM24C16B 
+ i2ceeprom.write(0x0, value);//write 8 out's coils
+  
 }
