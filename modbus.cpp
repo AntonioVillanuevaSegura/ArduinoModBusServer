@@ -57,18 +57,15 @@ void setCoils(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,int address
    Serial.print (value,HEX);
    Serial.print (" ");Serial.println (value,BIN);
 
-
   //We send the byte read from the modbus to the expander bus
   //void setPort(DFRobot_MCP23017 *mcp,uint8_t *value)
   setPort(mcp,&value); //Set MCP23017 Physical Relays 
   
- 
   for (int coil=n-1;coil>=0;coil--){
     uint8_t puiss= (1 << coil);
     uint8_t state=( (puiss & value) >0 ? 1:0 );
     (*modbusTCPServer).coilWrite(address+coil, state);
-    delay(10);
-    
+    delay(10);    
   }
 
 }

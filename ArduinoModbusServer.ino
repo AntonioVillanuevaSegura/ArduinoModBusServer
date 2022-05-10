@@ -28,16 +28,6 @@ INT
 #define I2C_ADDRESS 0x20 //mcp23017 expander
 byte input=0; //S'il y a des changements aux entrées réelles (i2c MCP23017), affichez-les sur la console série.ttyACM0
 
-/*
-#define N_HOLDING_REGISTERS 2
-#define HOLD_REG_ADDRESS 0x00
-
-#define N_COILS 16
-#define COIL_ADDRESS 0x00
-
-#define N_INPUTS 1
-#define INPUTS_ADDRESS 0x00
-*/
 //*************************************************************************************** 
 
 #include <SPI.h>
