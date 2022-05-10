@@ -42,4 +42,5 @@ void configureModbus(ModbusTCPServer *modbusTCPServer);
 
 //The modbus client activates the coils, then we activate the expander bus outputs the electrical relays
 void setOutputs(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,Adafruit_EEPROM_I2C *i2ceeprom, int address );
+
 #endif //MODBUS_H_
