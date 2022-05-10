@@ -157,9 +157,6 @@ void loop() {
     getCoils(&modbusTCPServer,COIL_ADDRESS,N_COILS); //Read Coils 
     getInputs(&modbusTCPServer,INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
 
-
-  //void setOutputs(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,Adafruit_EEPROM_I2C *i2ceeprom, int address );
-
     setOutputs(&modbusTCPServer,&mcp,&i2ceeprom,COIL_ADDRESS );//Le client a accede, nous mettons à jour les sorties , les relais
     
     }
