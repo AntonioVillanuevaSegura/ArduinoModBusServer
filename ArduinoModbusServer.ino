@@ -28,6 +28,7 @@ INT
 #define I2C_ADDRESS 0x20 //mcp23017 expander
 byte input=0; //S'il y a des changements aux entrées réelles (i2c MCP23017), affichez-les sur la console série.ttyACM0
 
+/*
 #define N_HOLDING_REGISTERS 2
 #define HOLD_REG_ADDRESS 0x00
 
@@ -36,15 +37,16 @@ byte input=0; //S'il y a des changements aux entrées réelles (i2c MCP23017), a
 
 #define N_INPUTS 1
 #define INPUTS_ADDRESS 0x00
-
+*/
 //*************************************************************************************** 
 
 #include <SPI.h>
 #include <Ethernet.h>
 #include <ArduinoModbus.h>
 
-
 #include "expander.h" 
+#include "modbus.h"
+#include "Adafruit_EEPROM_I2C.h"
 
 //Choisissez la carte à compiler
 
@@ -56,7 +58,7 @@ ModbusTCPServer modbusTCPServer; //TCP modbus server
 
 DFRobot_MCP23017 mcp(Wire, /*addr =*/I2C_ADDRESS);//Expander MCP 23017
 
-#include "Adafruit_EEPROM_I2C.h"
+
 Adafruit_EEPROM_I2C i2ceeprom;
 
 #define LED LED_BUILTIN
@@ -109,7 +111,7 @@ void setup() {
   delay(500);
 
   //Declare modbus struct holding_registers , coils 
-  configureModbus();
+  configureModbus(&modbusTCPServer);
 
   Serial.print("Ethernet Modbus on ");
   Serial.println (ip);
@@ -122,7 +124,7 @@ void setup() {
 
   //Read i2c EEPROM FM24C16B OUTs
 
-  setCoils(0x00,8, i2ceeprom.read(0x0));
+  setCoils(&modbusTCPServer ,&mcp,0x00,8, i2ceeprom.read(0x0));
 }
 //*************************************************************************************** 
 void loop() {
@@ -150,12 +152,15 @@ void loop() {
 
     //Afficher les données sur la console série
     printIndex ();//Index HEXA ,Affiche un index indiquant les positions des bits 
-    getHoldingRegister(HOLD_REG_ADDRESS);//Read first holding register on address 0x0000
-    getHoldingRegister(HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
-    getCoils(COIL_ADDRESS,N_COILS); //Read Coils 
-    getInputs(INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
+    getHoldingRegister(&modbusTCPServer,HOLD_REG_ADDRESS);//Read first holding register on address 0x0000
+    getHoldingRegister(&modbusTCPServer,HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
+    getCoils(&modbusTCPServer,COIL_ADDRESS,N_COILS); //Read Coils 
+    getInputs(&modbusTCPServer,INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
 
-    setOutputs(COIL_ADDRESS );//Le client a accede, nous mettons à jour les sorties , les relais
+
+  //void setOutputs(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,Adafruit_EEPROM_I2C *i2ceeprom, int address );
+
+    setOutputs(&modbusTCPServer,&mcp,&i2ceeprom,COIL_ADDRESS );//Le client a accede, nous mettons à jour les sorties , les relais
     
     }
  
@@ -166,13 +171,15 @@ void loop() {
   //S'il y a des changements aux entrées réelles (i2c MCP23017), affichez-les sur la console série.ttyACM0
   if ((readPort(&mcp,'A'))!= input ){
     input=readPort(&mcp,'A');
-    writeInputs(INPUTS_ADDRESS,input);
-    getInputs(INPUTS_ADDRESS,8);
+    writeInputs(&modbusTCPServer,INPUTS_ADDRESS,input);
+    getInputs(&modbusTCPServer,INPUTS_ADDRESS,8);
   
   }
   delay(500);
  
 }
+
+/*
 //*************************************************************************************** 
 //Une fonction pour compléter le nombre de 0's dans une expression BINARIE  base=8 ou 16 p.e
 String zeroComplement(String number, int base){
@@ -305,3 +312,4 @@ void setOutputs(int address ){//Physical outputs of the expander bus MCP23017 ..
  i2ceeprom.write(0x0, value);//write 8 out's coils
   
 }
+*/
