@@ -7,14 +7,21 @@
 #include "expander.h"
 #include <Arduino.h>
 
-#define N_HOLDING_REGISTERS 2
+//2048 /16 =128 strac 0x0000 0x0080 
+//INs memory not physical
+//#define N_HOLDING_REGISTERS 2
+#define N_HOLDING_REGISTERS 128
 #define HOLD_REG_ADDRESS 0x00
 
-#define N_COILS 16
+//OUTs memory not physical 0x0000 0x07FF
+#define N_COILS 2048
+//#define N_COILS 16
 #define COIL_ADDRESS 0x00
 
+//Real physical digital inputs ,Depends on hardware implementation ,in our case strac has 8 ...
 #define N_INPUTS 1
 #define INPUTS_ADDRESS 0x00
+
 
 //Imprime un en-tête hexadécimal, pour indiquer la position du bit
 void printIndex ();

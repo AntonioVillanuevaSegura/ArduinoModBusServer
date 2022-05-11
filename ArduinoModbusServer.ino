@@ -79,9 +79,6 @@ void setup() {
     Ethernet.init (10);//D6 on arduino ..... CS pin
   #endif 
   
-  //Ethernet.init(5) ; //PIN 5 on MKR WIFI 1010
-  //Ethernet.init (10);//D6 on arduino ..... CS pin
-
   Ethernet.begin(mac, ip);  // Start Ethernet connection
 
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {//Check ETH hardware 
@@ -116,7 +113,6 @@ void setup() {
   else {Serial.println ("I2C EEPROM not found ");while (true){ };}
 
   //Read i2c EEPROM FM24C16B OUTs
-
   setCoils(&modbusTCPServer ,&mcp,0x00,8, i2ceeprom.read(0x0));
 }
 //*************************************************************************************** 
@@ -145,9 +141,11 @@ void loop() {
 
     //Afficher les données sur la console série
     printIndex ();//Index HEXA ,Affiche un index indiquant les positions des bits 
+    
     getHoldingRegister(&modbusTCPServer,HOLD_REG_ADDRESS);//Read first holding register on address 0x0000
     getHoldingRegister(&modbusTCPServer,HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
-    getCoils(&modbusTCPServer,COIL_ADDRESS,N_COILS); //Read Coils 
+    
+    getCoils(&modbusTCPServer,COIL_ADDRESS,N_COILS); //Read Coils Relays OUTPUTs
     getInputs(&modbusTCPServer,INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
 
     setOutputs(&modbusTCPServer,&mcp,&i2ceeprom,COIL_ADDRESS );//Le client a accede, nous mettons à jour les sorties , les relais

@@ -4,7 +4,7 @@
 //*************************************************************************************** 
 //Imprime un en-tête hexadécimal, pour indiquer la position du bit
 void printIndex (){
-  Serial.print("                          ");  
+  Serial.print("\t\t\t\t");  
   for (int i=15;i>=0;i--){
     Serial.print (i,HEX);
   }
@@ -34,17 +34,25 @@ int writeInputs(ModbusTCPServer *modbusTCPServer ,int address,byte input){
 //*************************************************************************************** 
 //afficher les coils  "coilRead" au niveau de la console série
 void getCoils(ModbusTCPServer *modbusTCPServer,int address,int n){//int coilRead(int address);
+
+  //String tmp="Coils Read  ("+String(address+coil)+")=";
+ 
   Serial.print ("\nCoils Read  ( ");
   Serial.print (address);
   Serial.print (" to ");
   Serial.print (address+n);  
-  Serial.print (" ) = ");
+  Serial.print (" ) = \t");
   
   int valeur(-1);
 
   for (int coil=n-1;coil>=0;coil--){
     valeur=(*modbusTCPServer).coilRead(address+coil);
     Serial.print(valeur);
+    if (coil%16==0){
+      Serial.println ("");
+      Serial.print ("\t\t\t\t");
+    
+      }
   }
   Serial.println ("");
   
@@ -73,7 +81,7 @@ void setCoils(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,int address
 //Lire les entrées modbus "discreteInputRead" à afficher sur le bus série ttyACM0
 void getInputs(ModbusTCPServer *modbusTCPServer,int address,int n){
 
-  Serial.print ("\nInputs Read    (Real)   = "); 
+  Serial.print ("\nInputs Read    (Real)   = \t"); 
   int valeur= (*modbusTCPServer).discreteInputRead(address);
   Serial.println (zeroComplement(String(valeur,BIN),16));
 }
@@ -83,7 +91,7 @@ void getInputs(ModbusTCPServer *modbusTCPServer,int address,int n){
 void getHoldingRegister(ModbusTCPServer *modbusTCPServer,int address){
   Serial.print ("\nholdingRegisterRead (");
   Serial.print (address);
-  Serial.print (") = ");
+  Serial.print (") = \t");
   long reg = (*modbusTCPServer).holdingRegisterRead(address);//long holdingRegisterRead(int address);
  
   String tmp= String(reg,BIN);//Base BIN
@@ -96,17 +104,17 @@ void configureModbus(ModbusTCPServer *modbusTCPServer){
 
     //Holding Registers
    if ( ! (*modbusTCPServer).configureHoldingRegisters(HOLD_REG_ADDRESS, N_HOLDING_REGISTERS)){Serial.println (F("Error on create Holding Reg"));}
-   else{Serial.println ("Holding Registers OK");}
+   else{Serial.print(N_HOLDING_REGISTERS); Serial.println (" Holding Registers OK");}
 
     //Coils
     //int configureCoils(int startAddress, int nb);
    if ( ! (*modbusTCPServer). configureCoils( COIL_ADDRESS, N_COILS)){Serial.println (F("Error on create Coils"));}
-   else{Serial.println ("Coils OK");}    
+   else{Serial.print(N_COILS);Serial.println (" Coils OK");}    
 
     //Inputs
     //int configureDiscreteInputs(int startAddress, int nb);
   if ( ! (*modbusTCPServer). configureDiscreteInputs( INPUTS_ADDRESS,N_INPUTS)){Serial.println (F("Error on create Inputs"));}
-  else{Serial.println ("Inputs OK");} 
+  else{Serial.print(N_INPUTS);Serial.println (" Inputs OK");} 
 
 }
 //*************************************************************************************** 
