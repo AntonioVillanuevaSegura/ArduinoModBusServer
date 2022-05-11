@@ -43,6 +43,9 @@ byte input=0; //S'il y a des changements aux entrées réelles (i2c MCP23017), a
 #define ARDUINO_MKR_WIFI_1010
 //#define ARDUINO_NANO 
 
+#define SERIAL_SPEED 9600
+#define IP_ADDRESS 192,168,1,69
+#define MAC_ADDRESS 0xA8, 0x61, 0x0A, 0xAE, 0x7A, 0x69
 EthernetServer ethServer(502);//Server on port 502
 ModbusTCPServer modbusTCPServer; //TCP modbus server
 
@@ -59,12 +62,12 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT); //LED 
   
   // MAC address of the Ethernet Shield
-  byte mac[] = { 0xA8, 0x61, 0x0A, 0xAE, 0x7A, 0x69 };
+  byte mac[] = { MAC_ADDRESS };
    
   // IP address of the Ethernet Shield
-  IPAddress ip(192, 168, 6, 69);
+  IPAddress ip(IP_ADDRESS);
    
-  Serial.begin(9600); 
+  Serial.begin(SERIAL_SPEED); 
 
   while (!Serial){} //Wait for Serial Debug 
 
