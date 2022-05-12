@@ -1,14 +1,6 @@
 //Antonio Villanueva Segura MODBUS 
 #include "modbus.h"
 
-//*************************************************************************************** 
-//Imprime un en-tête hexadécimal, pour indiquer la position du bit
-void printIndex (){
-  Serial.print("\t\t\t\t");  
-  for (int i=15;i>=0;i--){
-    Serial.print (i,HEX);
-  }
-}
 
 //*************************************************************************************** 
 //Une fonction pour compléter le nombre de 0's dans une expression BINARIE  base=8 ou 16 p.e
@@ -31,32 +23,6 @@ String zeroComplement(String number, int base){
 int writeInputs(ModbusTCPServer *modbusTCPServer ,int address,byte input){ 
   (*modbusTCPServer).discreteInputWrite(address,input );
 }
-//*************************************************************************************** 
-//afficher les coils  "coilRead" au niveau de la console série
-void getCoils(ModbusTCPServer *modbusTCPServer,int address,int n){//int coilRead(int address);
-
-  //String tmp="Coils Read  ("+String(address+coil)+")=";
- 
-  Serial.print ("\nCoils Read  ( ");
-  Serial.print (address);
-  Serial.print (" to ");
-  Serial.print (address+n);  
-  Serial.print (" ) = \t");
-  
-  int valeur(-1);
-
-  for (int coil=n-1;coil>=0;coil--){
-    valeur=(*modbusTCPServer).coilRead(address+coil);
-    Serial.print(valeur);
-    if (coil%16==0){
-      Serial.println ("");
-      Serial.print ("\t\t\t\t");
-    
-      }
-  }
-  Serial.println ("");
-  
-}
 
 //*************************************************************************************** 
 //Récupère l'état des OUTs de la mémoire et les écrit dans les coils modbus
@@ -77,27 +43,7 @@ void setCoils(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,int address
   }
 
 }
-//*************************************************************************************** 
-//Lire les entrées modbus "discreteInputRead" à afficher sur le bus série ttyACM0
-void getInputs(ModbusTCPServer *modbusTCPServer,int address,int n){
 
-  Serial.print ("\nInputs Read    (Real)   = \t"); 
-  int valeur= (*modbusTCPServer).discreteInputRead(address);
-  Serial.println (zeroComplement(String(valeur,BIN),16));
-}
-
-//*************************************************************************************** 
-//afficher le holding Register "holdingRegisterRead" au niveau de la console série
-void getHoldingRegister(ModbusTCPServer *modbusTCPServer,int address){
-  Serial.print ("\nholdingRegisterRead (");
-  Serial.print (address);
-  Serial.print (") = \t");
-  long reg = (*modbusTCPServer).holdingRegisterRead(address);//long holdingRegisterRead(int address);
- 
-  String tmp= String(reg,BIN);//Base BIN
-
-  Serial.println (zeroComplement(tmp, 16));
-}
 //*************************************************************************************** 
 //We configure the modbus system Holding Registers , Coils , Inputs ...
 void configureModbus(ModbusTCPServer *modbusTCPServer){
@@ -138,3 +84,74 @@ void setOutputs(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,Adafruit_
  (*i2ceeprom).write(0x0, value);//write 8 out's coils
   
 }
+
+//*************************************************************************************** 
+//Print a 16-bit register through the serial port
+void printRegister(String reg,int address,int i){
+  reg=zeroComplement(reg, 16);
+
+  Serial.print(reg);
+  reg=" ["+ String (address+i,HEX)+"]\t";          
+  Serial.print (reg);
+
+  //if (i%64==0){Serial.println();}//Ligne
+    
+}
+
+//*************************************************************************************** 
+//Imprime en-tête hexadécimal, pour indiquer la position du bit FEDCBA9876543210 
+void printIndex (){
+  for (int i=15;i>=0;i--){Serial.print (i,HEX);}
+}
+
+//*************************************************************************************** 
+//Prints through the tty serial output each memory Register location works with printRegister() and printIndex()
+void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int n){
+  switch (type){
+    case (READ_COILS):{Serial.println("\nCOILS");break;}
+    case (READ_HOLDING_REG):{Serial.println("\nHOLDING REGISTER");break;}
+    case (READ_INPUTS):{Serial.println("\nREAL PHYSICAL INPUTS");break; }        
+  }
+  
+  //Write Hex index
+  for (int i=0 ;i< ( (n>4)?4:n ) ;i++){printIndex ();Serial.print('\t');}
+  Serial.println ();//\n
+
+  String tmp;//Auxiliary variable stores 16 bits in a string
+
+  switch (type){//type READ_COILS 0 ,READ_HOLDING_REG 1 ,READ_INPUTS 2
+    
+    case (READ_COILS):{    
+      for (int i=n-1;i>=0;i--){//Loop through all READ_COILS memory  locations
+        tmp+=(*modbusTCPServer).coilRead(address+i);
+        if (i%16==0) {printRegister(tmp,address, i);tmp="";}
+        if (i%64==0){Serial.println();}//Ligne        
+      }        
+      break;
+    }
+    
+    case (READ_HOLDING_REG):{    
+      for (int i=n-1;i>=0;i--){//Loop through all READ_COILS memory  locations
+        long reg = (*modbusTCPServer).holdingRegisterRead(address+i);//long holdingRegisterRead(int address);      
+        tmp= String(reg,BIN);//Base BIN
+        printRegister(tmp,address, i);
+        if (i%4==0){Serial.println();}//Ligne         
+      }
+      break;    
+    }
+    
+    case (READ_INPUTS):{
+      for (int i=n-1;i>=0;i--){//Loop through all READ_INPUTS memory  locations      
+        int valeur= (*modbusTCPServer).discreteInputRead(address+i);   
+        tmp=zeroComplement(String(valeur,BIN),16);
+        printRegister(tmp,address, i);
+        if (i%4==0){Serial.println();}//Ligne         
+      }   
+      break;        
+    }
+  }
+}
+
+
+  
+  

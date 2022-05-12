@@ -44,7 +44,7 @@ byte input=0; //S'il y a des changements aux entrées réelles (i2c MCP23017), a
 //#define ARDUINO_NANO 
 
 #define SERIAL_SPEED 9600
-#define IP_ADDRESS 192,168,1,69
+#define IP_ADDRESS 192,168,6,69
 #define MAC_ADDRESS 0xA8, 0x61, 0x0A, 0xAE, 0x7A, 0x69
 EthernetServer ethServer(502);//Server on port 502
 ModbusTCPServer modbusTCPServer; //TCP modbus server
@@ -140,14 +140,22 @@ void loop() {
     modbusTCPServer.poll();//Poll Modbus TCP request while client connected
 
     //Afficher les données sur la console série
-    printIndex ();//Index HEXA ,Affiche un index indiquant les positions des bits 
-    
+    //printIndex ();//Index HEXA ,Affiche un index indiquant les positions des bits 
+    /*
     getHoldingRegister(&modbusTCPServer,HOLD_REG_ADDRESS);//Read first holding register on address 0x0000
     getHoldingRegister(&modbusTCPServer,HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
     
     getCoils(&modbusTCPServer,COIL_ADDRESS,N_COILS); //Read Coils Relays OUTPUTs
     getInputs(&modbusTCPServer,INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
+    */
 
+    //Prints through the tty serial output each memory Register location
+    //void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int n);
+
+    debugRegister (READ_HOLDING_REG, &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS);
+    debugRegister (READ_COILS, &modbusTCPServer,COIL_ADDRESS, N_COILS);//ok
+    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS);   
+    
     setOutputs(&modbusTCPServer,&mcp,&i2ceeprom,COIL_ADDRESS );//Le client a accede, nous mettons à jour les sorties , les relais
     
     }
@@ -160,7 +168,8 @@ void loop() {
   if ((readPort(&mcp,'A'))!= input ){
     input=readPort(&mcp,'A');
     writeInputs(&modbusTCPServer,INPUTS_ADDRESS,input);
-    getInputs(&modbusTCPServer,INPUTS_ADDRESS,8);
+    //getInputs(&modbusTCPServer,INPUTS_ADDRESS,8);
+    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS); 
   
   }
   delay(500);
