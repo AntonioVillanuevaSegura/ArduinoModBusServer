@@ -13,9 +13,6 @@ void writeI2CByte(uint16_t mem_addr, byte data);
 //Reading between 0 to ( 256 * 8) = 2048 bytes
 byte readI2CByte(uint16_t mem_addr);
 
-//DEBUG func. Read and PRINT  the entire FM24CL16 FRAM from 0 to (256 * 8) = 2048 bytes
-void readAll();
-
 //DEBUG funnc. Read the entire FM24CL16 FRAM from 0 to (256 * 8) = 2048 bytes, shows values other than 0
 void readFM24CL16();
 
