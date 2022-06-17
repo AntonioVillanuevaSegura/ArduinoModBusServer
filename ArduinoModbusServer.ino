@@ -2,6 +2,8 @@
   Modbus TCP server  Antonio Villanueva Segura
   https://www.arduino.cc/reference/en/libraries/arduinomodbus/
   https://tutoduino.fr/tutoriels/arduino-modbus-tcp/
+  
+  FM24CL16B 2048 x 8 =16Kbit bits https://www.mouser.fr/datasheet/2/100/CYPR_S_A0011126722_1-2541208.pdf
 
 video test ARDUINO MKR WIFI 1010
 https://www.youtube.com/watch?v=NBX_xE0cCc8&feature=youtu.be
@@ -34,6 +36,7 @@ byte input=0; //S'il y a des changements aux entrées réelles (i2c MCP23017), a
 #include <Ethernet.h>
 #include <ArduinoModbus.h>
 
+#include "fram.h"
 #include "expander.h" 
 #include "modbus.h"
 #include "Adafruit_EEPROM_I2C.h"
@@ -51,8 +54,10 @@ ModbusTCPServer modbusTCPServer; //TCP modbus server
 
 DFRobot_MCP23017 mcp(Wire, /*addr =*/I2C_ADDRESS);//Expander MCP 23017
 
+uint16_t buffer[128]={0}; //Buffer 128*16=2048 ....tmp
 
-Adafruit_EEPROM_I2C i2ceeprom;
+
+Adafruit_EEPROM_I2C fram;
 
 #define LED LED_BUILTIN
 //***************************************************************************************  
@@ -108,12 +113,28 @@ void setup() {
   
   expanderSetup ( &mcp );//mcp23017 setup
   
-  //i2c EEPROM FM24C16B 2077748 setup
-  if (i2ceeprom.begin(0x50)) { Serial.println("Found I2C EEPROM");}
-  else {Serial.println ("I2C EEPROM not found ");while (true){ };}
+  //i2c FRam FM24C16B 2077748 setup
+  if (fram.begin(0x50)) { Serial.println("Found I2C FRam");}
+  else {Serial.println ("I2C FRam not found ");while (true){ };}
 
-  //Read i2c EEPROM FM24C16B OUTs
-  setCoils(&modbusTCPServer ,&mcp,0x00,8, i2ceeprom.read(0x0));
+  //Read i2c FRam FM24C16B OUTs
+  //setCoils(&modbusTCPServer ,&mcp,0x00,8, fram.read(0x0));
+
+  //resetFRam (&fram,2048*2);
+
+  //Reads FRam memory to the MODBUS memory 
+
+  //First Fram --to --> uint16_t buffer [128] 
+
+   FRAMToArray(0x50,(uint8_t *) buffer,  256); //128*x2 =256 uint8_t   Read Fram to buffer array
+  seeArray (buffer ,128);
+  //Second buffer[128] to modbus holding_registers
+  //void arrayToHoldingRegisters (ModbusTCPServer *modbusTCPServer,int address, int n,uint16_t *buffer,size_t size){
+
+  arrayToHoldingRegisters ( &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS ,buffer, ( sizeof (buffer) /sizeof (buffer[0])) );
+  //resetFM24CL16 ();
+
+
 }
 //*************************************************************************************** 
 void loop() {
@@ -139,25 +160,19 @@ void loop() {
 
     modbusTCPServer.poll();//Poll Modbus TCP request while client connected
 
-    //Afficher les données sur la console série
-    //printIndex ();//Index HEXA ,Affiche un index indiquant les positions des bits 
-    /*
-    getHoldingRegister(&modbusTCPServer,HOLD_REG_ADDRESS);//Read first holding register on address 0x0000
-    getHoldingRegister(&modbusTCPServer,HOLD_REG_ADDRESS+1);//Read Second holding register on address 0x0001 
-    
-    getCoils(&modbusTCPServer,COIL_ADDRESS,N_COILS); //Read Coils Relays OUTPUTs
-    getInputs(&modbusTCPServer,INPUTS_ADDRESS,N_INPUTS);//Read Real Inputs   
-    */
-
     //Prints through the tty serial output each memory Register location
     //void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int n);
 
-    debugRegister (READ_HOLDING_REG, &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS);
-    debugRegister (READ_COILS, &modbusTCPServer,COIL_ADDRESS, N_COILS);//ok
-    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS);   
-    
-    setOutputs(&modbusTCPServer,&mcp,&i2ceeprom,COIL_ADDRESS );//Le client a accede, nous mettons à jour les sorties , les relais
-    
+    debugRegister (READ_HOLDING_REG, &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS,buffer,  (sizeof(buffer) / sizeof (buffer[0])) );
+    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer,(sizeof(buffer) / sizeof (buffer[0])));   
+
+    //
+    //setRelays(&modbusTCPServer,&mcp,&fram,COIL_ADDRESS );//Le client a accede, nous mettons à jour les 8 sorties physiques réelles, les relais
+
+    //Writes MODBUS memory status to the FRam memory
+   // bankToArray(0x50,(uint8_t *) buffer,  256); //128*x2
+    arrayToFRAM(0x50,(uint8_t *) buffer,  256);
+    //seeArray (buffer,128);
     }
  
     Serial.println("\nClient disconnected");
@@ -169,9 +184,25 @@ void loop() {
     input=readPort(&mcp,'A');
     writeInputs(&modbusTCPServer,INPUTS_ADDRESS,input);
     //getInputs(&modbusTCPServer,INPUTS_ADDRESS,8);
-    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS); 
+    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer, (sizeof(buffer) / sizeof (buffer[0]))); 
   
   }
   delay(500);
  
+}
+
+//See array uint16_t
+void seeArray (uint16_t *buf ,size_t size){
+  printIndex();
+  Serial.println ();
+  for (int i=0 ;i<size;i++){
+
+   // Serial.print(*buf,BIN);Serial.print(" [");Serial.print(i,DEC),Serial.println("]");
+
+  //Read bit from word
+  for (int b=0;b<16;b++){Serial.print(bitRead(*buf,b));}
+  
+   Serial.print(" [");Serial.print(i,DEC),Serial.println("]");
+    ++buf;    
+  }  
 }
