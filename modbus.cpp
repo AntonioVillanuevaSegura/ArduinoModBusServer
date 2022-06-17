@@ -36,51 +36,10 @@ int writeInputs(ModbusTCPServer *modbusTCPServer ,int address,byte input){
 }
 
 //*************************************************************************************** 
-//Récupère l'état des OUTs de la mémoire et les écrit dans les coils modbus
-/*
-void setCoils(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,int address,int n, uint8_t value){//int coilWrite(int address, uint8_t value);
-   Serial.print ("\nWrite OUT's from i2c FRam = 0x");
-   Serial.print (value,HEX);
-   Serial.print (" ");Serial.println (value,BIN);
-
-  //We send the byte read from the modbus to the expander bus
-  //void setPort(DFRobot_MCP23017 *mcp,uint8_t *value)
-  setPort(mcp,&value); //Set MCP23017 Physical Relays 
-  
-  for (int coil=n-1;coil>=0;coil--){
-    uint8_t puiss= (1 << coil);
-    uint8_t state=( (puiss & value) >0 ? 1:0 );
-    (*modbusTCPServer).coilWrite(address+coil, state);
-    delay(10);    
-  }
-
+//The modbus client activates the relays, then we activate the expander bus outputs physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+void setRelays(DFRobot_MCP23017 *mcp,uint8_t *outs ){//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+  setPort(mcp,outs);
 }
-*/
-
-//*************************************************************************************** 
-//The modbus client activates the coils, then we activate the expander bus outputs the electrical relays
-/*
-void setRelays(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,Adafruit_EEPROM_I2C *fram, int address ){//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
-
-  byte value=0x00;//8 coils packet to mcp
-
-  for (int coil=7;coil>=0;coil--){//read 8 modbus coils (coilRead) 
-    value =value<<1;//rotate << left
-
-    value |=  (((*modbusTCPServer).coilRead(address+coil)>0) ? 0x01 : 0x00 ) ; //Read actual coil
-    //value += (*modbusTCPServer).coilRead(address+coil) ; //Read coil
-    delay(25);
-  }
-
-  //We send the byte read from the modbus to the expander bus
-  //void setPort(DFRobot_MCP23017 *mcp,uint8_t *value)
-  setPort(mcp,&value); //Set MCP23017 Physical Relays 
-
- //Set the i2c FRam FM24C16B 
- //(*fram).write(0x0, value);//write 8 out's coils
-  
-}
-*/
 
 //*************************************************************************************** 
 //Une fonction pour compléter le nombre de 0's dans une expression BINARIE  base=8 ou 16 p.e
@@ -136,7 +95,7 @@ void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int 
         long reg = (*modbusTCPServer).holdingRegisterRead(address+i);//long holdingRegisterRead(int address);    
 
         //Write uint16_t [128] register
-        *buffer=reg;//Write in buffer[128]= 16 holding_register
+        *buffer=reg;//  > Write in buffer[128]= 16 holding_register
 
        // tmp= String(reg,BIN);//Base BIN
         tmp= String(*buffer,BIN);//Base BIN

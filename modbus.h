@@ -35,6 +35,9 @@ void configureModbus(ModbusTCPServer *modbusTCPServer);
 //Lire les entrées MCP2317 réelles et les copier sur modbus "discreteInputWrite"
 int writeInputs(ModbusTCPServer *modbusTCPServer ,int address,byte input);
 
+//The modbus client activates the relays, then we activate the expander bus outputs physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+void setRelays(DFRobot_MCP23017 *mcp,uint8_t *outs );
+
 //Récupère l'état des OUTs de la mémoire et les écrit dans les coils modbus
 //void setCoils(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp ,int address,int n, uint8_t value);
 

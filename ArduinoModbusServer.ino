@@ -117,23 +117,17 @@ void setup() {
   if (fram.begin(0x50)) { Serial.println("Found I2C FRam");}
   else {Serial.println ("I2C FRam not found ");while (true){ };}
 
-  //Read i2c FRam FM24C16B OUTs
-  //setCoils(&modbusTCPServer ,&mcp,0x00,8, fram.read(0x0));
-
-  //resetFRam (&fram,2048*2);
-
   //Reads FRam memory to the MODBUS memory 
-
   //First Fram --to --> uint16_t buffer [128] 
 
-   FRAMToArray(0x50,(uint8_t *) buffer,  256); //128*x2 =256 uint8_t   Read Fram to buffer array
-  seeArray (buffer ,128);
-  //Second buffer[128] to modbus holding_registers
-  //void arrayToHoldingRegisters (ModbusTCPServer *modbusTCPServer,int address, int n,uint16_t *buffer,size_t size){
+   FRAMToArray(0x50,(uint8_t *) buffer,  256); //128*x2 =256 uint8_t   Read Fram to uint16_t (uint8_t ) buffer  array
 
+  //Writes uint16_t [128] ( or uint8_t[256] cast ) array to Holding Registers
   arrayToHoldingRegisters ( &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS ,buffer, ( sizeof (buffer) /sizeof (buffer[0])) );
-  //resetFM24CL16 ();
 
+
+  setRelays( &mcp , (uint8_t *) buffer );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+  //resetFM24CL16 ();//Reset Fram debug
 
 }
 //*************************************************************************************** 
@@ -169,10 +163,11 @@ void loop() {
     //
     //setRelays(&modbusTCPServer,&mcp,&fram,COIL_ADDRESS );//Le client a accede, nous mettons à jour les 8 sorties physiques réelles, les relais
 
-    //Writes MODBUS memory status to the FRam memory
-   // bankToArray(0x50,(uint8_t *) buffer,  256); //128*x2
-    arrayToFRAM(0x50,(uint8_t *) buffer,  256);
-    //seeArray (buffer,128);
+    //Holding Registers 0x00 to 0x07 == OUTs Relays
+
+    arrayToFRAM(0x50,(uint8_t *) buffer,  256);// Write uint16_t ( uint8_t) buffer array to Fram 
+    setRelays( &mcp , (uint8_t *) buffer );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+
     }
  
     Serial.println("\nClient disconnected");
@@ -189,20 +184,4 @@ void loop() {
   }
   delay(500);
  
-}
-
-//See array uint16_t
-void seeArray (uint16_t *buf ,size_t size){
-  printIndex();
-  Serial.println ();
-  for (int i=0 ;i<size;i++){
-
-   // Serial.print(*buf,BIN);Serial.print(" [");Serial.print(i,DEC),Serial.println("]");
-
-  //Read bit from word
-  for (int b=0;b<16;b++){Serial.print(bitRead(*buf,b));}
-  
-   Serial.print(" [");Serial.print(i,DEC),Serial.println("]");
-    ++buf;    
-  }  
 }

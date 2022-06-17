@@ -29,4 +29,7 @@ void FRAMToArray(uint8_t address,uint8_t *matriz, int size);
 // Returns CRC16 Modbus from uint16_t buffer[256] 
 uint16_t crc16 (uint8_t *buffer,int size);
 
+// Debug Print, See array uint16_t []
+void seeArray (uint16_t *buf ,size_t size);
+
 #endif //FRAM_H_

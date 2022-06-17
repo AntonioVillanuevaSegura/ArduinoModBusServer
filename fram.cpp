@@ -140,3 +140,20 @@ uint16_t crc16 (uint8_t *buffer,int size){
   FastCRC16 CRC16;
   return CRC16.modbus( buffer,size);
 }
+/**************************************************************************************************************/
+// Debug Print, See array uint16_t []
+void seeArray (uint16_t *buf ,size_t size){
+  for (int i=15;i>=0;i--){Serial.print (i,HEX);} //en-tête hexadécimal
+  
+  Serial.println ();
+  for (int i=0 ;i<size;i++){
+
+   // Serial.print(*buf,BIN);Serial.print(" [");Serial.print(i,DEC),Serial.println("]");
+
+  //Read bit from word
+  for (int b=0;b<16;b++){Serial.print(bitRead(*buf,b));}
+  
+   Serial.print(" [");Serial.print(i,DEC),Serial.println("]");
+    ++buf;    
+  }  
+}
