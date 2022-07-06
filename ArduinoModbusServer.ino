@@ -125,8 +125,7 @@ void setup() {
   //Writes uint16_t [128] ( or uint8_t[256] cast ) array to Holding Registers
   arrayToHoldingRegisters ( &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS ,buffer, ( sizeof (buffer) /sizeof (buffer[0])) );
 
-
-  setRelays( &mcp , (uint8_t *) buffer );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+ // setRelays( &mcp , (uint8_t *) buffer );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
   //resetFM24CL16 ();//Reset Fram debug
 
 }
@@ -166,7 +165,10 @@ void loop() {
     //Holding Registers 0x00 to 0x07 == OUTs Relays
 
     arrayToFRAM(0x50,(uint8_t *) buffer,  256);// Write uint16_t ( uint8_t) buffer array to Fram 
-    setRelays( &mcp , (uint8_t *) buffer );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+
+    Serial.print ("Lecture buffer ");Serial.println (buffer[0],BIN);
+    Serial.print ("Lecture buffer uint8_t ");Serial.println ((uint8_t)  buffer[0],BIN);    
+    setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
 
     }
  

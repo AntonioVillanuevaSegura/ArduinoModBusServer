@@ -38,14 +38,14 @@
  
 #define MEMORY_BLOCK 256 
 
-String address="";
+//String address="";
 String data="";
 uint8_t buf[256];//buf_array to  FM24CL16 and FM24CL16 to buf_array
 
 
 /**************************************************************************************************************/
 //Write from 0 to ( 256 * 8) = 2048 bytes
-void writeI2CByte(uint16_t mem_addr, byte data){
+void writeI2CByte(uint8_t mem_addr, byte data){
 
   Serial.print ("ADDR 0x");Serial.print (ADDR | ( mem_addr /MEMORY_BLOCK ) ,HEX);Serial.print ( ", 0x");Serial.println ( (mem_addr-(MEMORY_BLOCK *  (mem_addr/MEMORY_BLOCK))),HEX );
   Wire.beginTransmission (ADDR | ( mem_addr /MEMORY_BLOCK ) ); //Slave Address 0x5n , 0x50 | A2 A1 A0
@@ -57,14 +57,14 @@ void writeI2CByte(uint16_t mem_addr, byte data){
 
 /**************************************************************************************************************/
 //Reading between 0 to ( 256 * 8) = 2048 bytes
-byte readI2CByte(uint16_t mem_addr){
+byte readI2CByte(uint8_t mem_addr){
 
   byte data=0x00;
-  uint16_t address(ADDR); //Base Address 0x50
+  uint8_t address(ADDR); //Base Address 0x50
   address += ( mem_addr /MEMORY_BLOCK );//A2 A1 A0 =  add to 0x50  -> 0x00 0x01 0x02 0x03 0x04 0x05 0x06 0x07
 
  
-  Wire.beginTransmission(address & 0xFF) ;//Slave Address 0x5n , 0x50 | A2 A1 A0
+  Wire.beginTransmission( address & 0xFF) ;//Slave Address 0x5n , 0x50 | A2 A1 A0
   Wire.write(mem_addr-(MEMORY_BLOCK *  (mem_addr/MEMORY_BLOCK) ));//Address in memory bank 0 -256
   Wire.endTransmission();
 

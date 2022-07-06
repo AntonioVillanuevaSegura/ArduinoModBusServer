@@ -38,7 +38,7 @@ int writeInputs(ModbusTCPServer *modbusTCPServer ,int address,byte input){
 //*************************************************************************************** 
 //The modbus client activates the relays, then we activate the expander bus outputs physical outputs of the expander bus MCP23017 ...8 Coils or Relays
 void setRelays(DFRobot_MCP23017 *mcp,uint8_t *outs ){//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
-  setPort(mcp,outs);
+  setPort(mcp,outs);//Expander MCP23017 Real outs 
 }
 
 //*************************************************************************************** 
