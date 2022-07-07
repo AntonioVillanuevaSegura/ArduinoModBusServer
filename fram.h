@@ -8,10 +8,10 @@
 
 
 //Write from 0 to ( 256 * 8) = 2048 bytes
-void writeI2CByte(uint8_t mem_addr, byte data);
+void writeI2CByte(uint16_t mem_addr, byte data);
 
 //Reading between 0 to ( 256 * 8) = 2048 bytes
-byte readI2CByte(uint8_t mem_addr);
+byte readI2CByte(uint16_t mem_addr);
 
 //DEBUG funnc. Read the entire FM24CL16 FRAM from 0 to (256 * 8) = 2048 bytes, shows values other than 0
 void readFM24CL16();
@@ -26,10 +26,10 @@ void arrayToFRAM(uint8_t address,uint8_t *matriz, int size);
 //...Continuos reading memory addresss = i2c address
 void FRAMToArray(uint8_t address,uint8_t *matriz, int size);
 
-// Returns CRC16 Modbus from uint16_t buffer[256] 
+// Returns CRC16 Modbus from uint16_t buffer[256] https://crccalc.com/
 uint16_t crc16 (uint8_t *buffer,int size);
 
-// Debug Print, See array uint16_t []
+// Debug Print, See array uint16_t [] buffer
 void seeArray (uint16_t *buf ,size_t size);
 
 #endif //FRAM_H_

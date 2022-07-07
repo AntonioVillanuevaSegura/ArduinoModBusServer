@@ -45,7 +45,7 @@ uint8_t buf[256];//buf_array to  FM24CL16 and FM24CL16 to buf_array
 
 /**************************************************************************************************************/
 //Write from 0 to ( 256 * 8) = 2048 bytes
-void writeI2CByte(uint8_t mem_addr, byte data){
+void writeI2CByte(uint16_t mem_addr, byte data){
 
   Serial.print ("ADDR 0x");Serial.print (ADDR | ( mem_addr /MEMORY_BLOCK ) ,HEX);Serial.print ( ", 0x");Serial.println ( (mem_addr-(MEMORY_BLOCK *  (mem_addr/MEMORY_BLOCK))),HEX );
   Wire.beginTransmission (ADDR | ( mem_addr /MEMORY_BLOCK ) ); //Slave Address 0x5n , 0x50 | A2 A1 A0
@@ -57,7 +57,7 @@ void writeI2CByte(uint8_t mem_addr, byte data){
 
 /**************************************************************************************************************/
 //Reading between 0 to ( 256 * 8) = 2048 bytes
-byte readI2CByte(uint8_t mem_addr){
+byte readI2CByte(uint16_t mem_addr){
 
   byte data=0x00;
   uint8_t address(ADDR); //Base Address 0x50
@@ -135,13 +135,15 @@ void FRAMToArray(uint8_t address,uint8_t *matriz, int size){
     delay(500);
 }
 /**************************************************************************************************************/
-// Returns CRC16 Modbus from uint16_t buffer[256] 
+// Returns CRC16 Modbus from uint16_t buffer[256]  https://crccalc.com/
 uint16_t crc16 (uint8_t *buffer,int size){
   FastCRC16 CRC16;
+
+  //If we want standard results, we must perform a buffer swap HL to LH
   return CRC16.modbus( buffer,size);
 }
 /**************************************************************************************************************/
-// Debug Print, See array uint16_t []
+// Debug Print, See array uint16_t [] buffer
 void seeArray (uint16_t *buf ,size_t size){
   for (int i=15;i>=0;i--){Serial.print (i,HEX);} //en-tête hexadécimal
   

@@ -54,15 +54,13 @@ ModbusTCPServer modbusTCPServer; //TCP modbus server
 
 DFRobot_MCP23017 mcp(Wire, /*addr =*/I2C_ADDRESS);//Expander MCP 23017
 
-uint16_t buffer[128]={0}; //Buffer 128*16=2048 ....tmp
-
+uint16_t buffer[128]={0}; //Buffer 128*16=2048 ....tmp . Intermediary buffer between the Fram and the modbus registers
 
 Adafruit_EEPROM_I2C fram;
 
 #define LED LED_BUILTIN
 //***************************************************************************************  
 void setup() {
-
 
   pinMode(LED_BUILTIN, OUTPUT); //LED 
   
@@ -74,7 +72,7 @@ void setup() {
    
   Serial.begin(SERIAL_SPEED); 
 
-  while (!Serial){} //Wait for Serial Debug 
+  while (!Serial){} //Wait for Serial Debug , If there is no serial port it blocks
 
   #if defined ARDUINO_MKR_WIFI_1010
     Serial.println ("ARDUINO_MKR_WIFI_1010");
@@ -117,16 +115,32 @@ void setup() {
   if (fram.begin(0x50)) { Serial.println("Found I2C FRam");}
   else {Serial.println ("I2C FRam not found ");while (true){ };}
 
+
   //Reads FRam memory to the MODBUS memory 
   //First Fram --to --> uint16_t buffer [128] 
+  
+  FRAMToArray(0x50,(uint8_t *) buffer,  256); //128*x2 =256 uint8_t   Read Fram to uint16_t (uint8_t ) buffer  array
 
-   FRAMToArray(0x50,(uint8_t *) buffer,  256); //128*x2 =256 uint8_t   Read Fram to uint16_t (uint8_t ) buffer  array
+  Serial.print ("Buffer values = 0x ");Serial.println (buffer[0],HEX);//DEBUG VALUES 2
 
+  
+  //Reads CRC16 from FRAM 0x51
+  //byte readI2CByte(uint8_t mem_addr)
+  uint16_t crcFram= (readI2CByte(257)) << 8; //CRC16 from FRAM
+  crcFram |= readI2CByte(256); 
+
+  Serial.print("CRC FROM FRAM = 0x");Serial.println (crcFram,HEX); //CRC from RAM debug
+
+  //Calcul CRC16 from uint16_t buffer[128] pr uint8_t [256]
+  uint16_t crc=crc16 ((uint8_t *) buffer,  2);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
+  Serial.print("CRC FROM BUFFER = 0x");Serial.println (crc,HEX); //CRC from BUFFER 
+
+   
   //Writes uint16_t [128] ( or uint8_t[256] cast ) array to Holding Registers
   arrayToHoldingRegisters ( &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS ,buffer, ( sizeof (buffer) /sizeof (buffer[0])) );
 
- // setRelays( &mcp , (uint8_t *) buffer );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
-  //resetFM24CL16 ();//Reset Fram debug
+ //Writes buffer[0] (holdingRegisters) to Relays 
+  setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays buffer[0]
 
 }
 //*************************************************************************************** 
@@ -157,18 +171,23 @@ void loop() {
     //void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int n);
 
     debugRegister (READ_HOLDING_REG, &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS,buffer,  (sizeof(buffer) / sizeof (buffer[0])) );
-    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer,(sizeof(buffer) / sizeof (buffer[0])));   
+    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer,(sizeof(buffer) / sizeof (buffer[0])));  
+     
+    arrayToFRAM(0x50,(uint8_t *) buffer,  256);// Write uint16_t buffer ( uint8_t) buffer array to Fram 
 
-    //
-    //setRelays(&modbusTCPServer,&mcp,&fram,COIL_ADDRESS );//Le client a accede, nous mettons à jour les 8 sorties physiques réelles, les relais
+  //Calcul CRC16 from uint16_t buffer[128] pr uint8_t [256]
+   uint16_t crc=crc16 ((uint8_t *) buffer,  2);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
+   
+  //Debug uint8_t buffer data 
+  // Serial.print ("Calculo Debug con 2 datos uint8t ");Serial.print ( (( uint8_t *) buffer)[0],HEX);Serial.println ( (( uint8_t *) buffer)[1],HEX);
+   
+   Serial.print("CRC16 = 0x ");Serial.println (crc, HEX); //DEBUG print CRC16
 
-    //Holding Registers 0x00 to 0x07 == OUTs Relays
-
-    arrayToFRAM(0x50,(uint8_t *) buffer,  256);// Write uint16_t ( uint8_t) buffer array to Fram 
-
-    Serial.print ("Lecture buffer ");Serial.println (buffer[0],BIN);
-    Serial.print ("Lecture buffer uint8_t ");Serial.println ((uint8_t)  buffer[0],BIN);    
-    setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
+  //Writes CRC16 in FRAM 0x51 ...  256 ,257
+  writeI2CByte(256, crc);// PROBLEM 
+  writeI2CByte(257, ( crc>>8) ); //PROBLEM   
+  
+  setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays buffer[0]
 
     }
  
