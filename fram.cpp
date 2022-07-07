@@ -47,7 +47,7 @@ uint8_t buf[256];//buf_array to  FM24CL16 and FM24CL16 to buf_array
 //Write from 0 to ( 256 * 8) = 2048 bytes
 void writeI2CByte(uint16_t mem_addr, byte data){
 
-  Serial.print ("ADDR 0x");Serial.print (ADDR | ( mem_addr /MEMORY_BLOCK ) ,HEX);Serial.print ( ", 0x");Serial.println ( (mem_addr-(MEMORY_BLOCK *  (mem_addr/MEMORY_BLOCK))),HEX );
+  //Serial.print ("ADDR 0x");Serial.print (ADDR | ( mem_addr /MEMORY_BLOCK ) ,HEX);Serial.print ( ", 0x");Serial.println ( (mem_addr-(MEMORY_BLOCK *  (mem_addr/MEMORY_BLOCK))),HEX );
   Wire.beginTransmission (ADDR | ( mem_addr /MEMORY_BLOCK ) ); //Slave Address 0x5n , 0x50 | A2 A1 A0
   Wire.write(mem_addr-(MEMORY_BLOCK *  (mem_addr/MEMORY_BLOCK) ));//Address in memory bank 0 -256
   Wire.write(data);//Data byte
@@ -94,8 +94,9 @@ void readFM24CL16(){
 /**************************************************************************************************************/
 //Reset all FM24CL16 FRAM memory to 0
 void resetFM24CL16 (){
-   for (int mem=0 ;mem<MEMORY_BLOCK*8;mem++){//Loop over fram memory
-    Serial.print ("Reset mem pos. = ");Serial.println (mem);
+  //for (int mem=0 ;mem<MEMORY_BLOCK*8;mem++){//Loop over ALL fram memory
+  for (int mem=0 ;mem<MEMORY_BLOCK*2;mem++){//Loop over 0x50 0x52 fram memory
+    //Serial.print ("Reset mem pos. = ");Serial.println (mem);//DEBUG
     writeI2CByte(mem, 0);
    }
 }

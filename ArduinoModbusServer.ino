@@ -116,24 +116,32 @@ void setup() {
   else {Serial.println ("I2C FRam not found ");while (true){ };}
 
 
-  //Reads FRam memory to the MODBUS memory 
+  //Reads Fram memory to buffer[128] and the MODBUS memory 
   //First Fram --to --> uint16_t buffer [128] 
   
   FRAMToArray(0x50,(uint8_t *) buffer,  256); //128*x2 =256 uint8_t   Read Fram to uint16_t (uint8_t ) buffer  array
 
-  Serial.print ("Buffer values = 0x ");Serial.println (buffer[0],HEX);//DEBUG VALUES 2
-
-  
-  //Reads CRC16 from FRAM 0x51
-  //byte readI2CByte(uint8_t mem_addr)
+  //Reads CRC16 from FRAM 0x51   .... byte readI2CByte(uint16_t mem_addr)
   uint16_t crcFram= (readI2CByte(257)) << 8; //CRC16 from FRAM
   crcFram |= readI2CByte(256); 
 
-  Serial.print("CRC FROM FRAM = 0x");Serial.println (crcFram,HEX); //CRC from RAM debug
+  //Serial.print("CRC FROM FRAM = 0x");Serial.println (crcFram,HEX); //CRC from RAM debug
 
   //Calcul CRC16 from uint16_t buffer[128] pr uint8_t [256]
-  uint16_t crc=crc16 ((uint8_t *) buffer,  2);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
-  Serial.print("CRC FROM BUFFER = 0x");Serial.println (crc,HEX); //CRC from BUFFER 
+  uint16_t crcBuffer=crc16 ((uint8_t *) buffer,  256);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
+
+  //Compare the CRC16 retrieved from the FRAM with the calculated CRC16 .If is different, buffer [] reset to 0 as well as the CRC value.
+  Serial.print ("CRC from Fram = 0x");Serial.print(crcFram,HEX);Serial.print (" , CRC calculated = 0x");Serial.println(crcBuffer,HEX);//DEBUG PRINT
+  
+  if (crcFram != crcBuffer){
+    Serial.println ("Wrong CRC16 value ! Reset Fram ");
+    resetFM24CL16 ();//Reset FRAM to 0's
+
+    //CRC16 value for 0's in 0x50 255 bytes
+    writeI2CByte(256, 0xBF);
+    writeI2CByte(257, 0x64); 
+    
+    }else {Serial.println ("CRC 16 is ok "); }
 
    
   //Writes uint16_t [128] ( or uint8_t[256] cast ) array to Holding Registers
@@ -176,16 +184,13 @@ void loop() {
     arrayToFRAM(0x50,(uint8_t *) buffer,  256);// Write uint16_t buffer ( uint8_t) buffer array to Fram 
 
   //Calcul CRC16 from uint16_t buffer[128] pr uint8_t [256]
-   uint16_t crc=crc16 ((uint8_t *) buffer,  2);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
-   
-  //Debug uint8_t buffer data 
-  // Serial.print ("Calculo Debug con 2 datos uint8t ");Serial.print ( (( uint8_t *) buffer)[0],HEX);Serial.println ( (( uint8_t *) buffer)[1],HEX);
-   
+   uint16_t crc=crc16 ((uint8_t *) buffer,  256);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
+      
    Serial.print("CRC16 = 0x ");Serial.println (crc, HEX); //DEBUG print CRC16
 
-  //Writes CRC16 in FRAM 0x51 ...  256 ,257
-  writeI2CByte(256, crc);// PROBLEM 
-  writeI2CByte(257, ( crc>>8) ); //PROBLEM   
+  //Save CRC16 in FRAM 0x51 ... memory abs 256 ,257 , relative 0x51:00 0x51:01
+  writeI2CByte(256, crc);
+  writeI2CByte(257, ( crc>>8) );   
   
   setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays buffer[0]
 
