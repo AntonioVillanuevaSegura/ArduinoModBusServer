@@ -13,7 +13,6 @@
 #define N_HOLDING_REGISTERS 128
 #define HOLD_REG_ADDRESS 0x00
 
-
 //Real physical digital inputs ,Depends on hardware implementation ,in our case strac has 8 ...
 #define N_INPUTS 1
 #define INPUTS_ADDRESS 0x00
@@ -35,14 +34,8 @@ void configureModbus(ModbusTCPServer *modbusTCPServer);
 //Lire les entrées MCP2317 réelles et les copier sur modbus "discreteInputWrite"
 int writeInputs(ModbusTCPServer *modbusTCPServer ,int address,byte input);
 
-//The modbus client activates the relays, then we activate the expander bus outputs physical outputs of the expander bus MCP23017 ...8 Coils or Relays
-void setRelays(DFRobot_MCP23017 *mcp,uint8_t *outs );
-
 //Récupère l'état des OUTs de la mémoire et les écrit dans les coils modbus
 //void setCoils(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp ,int address,int n, uint8_t value);
-
-//The modbus client activates the coils, then we activate the expander bus outputs the electrical relays
-//void setRelays(ModbusTCPServer *modbusTCPServer,DFRobot_MCP23017 *mcp,Adafruit_EEPROM_I2C *fram, int address );
 
 //Une fonction pour compléter le nombre de 0's dans une expression BINARIE  base=8  00000000 ou 16 p.e 0000000000000000
 String zeroComplement(String number, int base);

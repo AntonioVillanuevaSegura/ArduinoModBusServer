@@ -54,7 +54,7 @@ ModbusTCPServer modbusTCPServer; //TCP modbus server
 
 DFRobot_MCP23017 mcp(Wire, /*addr =*/I2C_ADDRESS);//Expander MCP 23017
 
-uint16_t buffer[128]={0}; //Buffer 128*16=2048 ....tmp . Intermediary buffer between the Fram and the modbus registers
+uint16_t buffer[256]={0}; //ram buffer 256*16=4096 IN{255-128} OUT{127-0} ( 128*16=2048 ) Intermediary buffer between the Fram and the modbus registers
 
 Adafruit_EEPROM_I2C fram;
 
@@ -110,7 +110,7 @@ void setup() {
   
   expanderSetup ( &mcp );//mcp23017 setup i2c expander I/O
   
-  //i2c FRam FM24C16B 2077748 setup
+  //i2c FRam FM24C16B 2077748 setup and ping
   if (fram.begin(0x50)) { Serial.println("Found I2C FRam");}
   else {Serial.println ("I2C FRam not found ");while (true){ };}
 
@@ -118,30 +118,37 @@ void setup() {
   //Reads Fram memory to buffer[128] and the MODBUS memory 
   //First Fram --to --> uint16_t buffer [128] 
   
-  FRAMToArray(0x50,(uint8_t *) buffer,  256); //128*x2 =256 uint8_t   Read Fram to uint16_t (uint8_t ) buffer  array
-
+  FRAMToArray(0x50,(uint8_t *) buffer+0,  256); //128*x2 =256 uint8_t , Fram to uint16_t buffer RAM array OUTs {0-127}
+  FRAMToArray(0x51,(uint8_t *) buffer+128,  256); //128*x2 =256 uint8_t , Fram to uint16_t buffer RAM array INs {128-255}
   //Reads CRC16 from FRAM 0x51   .... byte readI2CByte(uint16_t mem_addr)
-  uint16_t crcFram= (readI2CByte(257)) << 8; //CRC16 from FRAM
-  crcFram |= readI2CByte(256); 
+
+  /*
+   *     writeI2CByte(512, crc);//0x52:00
+    writeI2CByte(513, ( crc>>8) );//0x52:00   
+   */
+  uint16_t crcFram= (readI2CByte(513)) << 8; //CRC16 from FRAM
+  crcFram |= readI2CByte(512); 
 
   //Calcul CRC16 from uint16_t buffer[128] pr uint8_t [256]
-  uint16_t crcBuffer=crc16 ((uint8_t *) buffer,  256);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
+  uint16_t crcBuffer=crc16 ((uint8_t *) buffer,  256*2);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
 
   //Compare the CRC16 retrieved from the FRAM with the calculated CRC16 .If is different, buffer [] reset to 0 as well as the CRC value.
   Serial.print ("CRC from Fram = 0x");Serial.print(crcFram,HEX);Serial.print (" , CRC calculated = 0x");Serial.println(crcBuffer,HEX);//DEBUG PRINT
-  
+
+
+
   if (crcFram != crcBuffer){ //The CRC16 retrieved from the Fram does not coincide with the calculated CRC16 value
     Serial.println ("Wrong CRC16 value ! Reset Fram ");
     resetFM24CL16 ();//Reset FRAM to 0's
     
     //CRC16 value for 0's in 0x50 255 bytes and CRC16
-    writeI2CByte(256, 0xBF);//CRC16 H precalculated for 256 zero values
-    writeI2CByte(257, 0x64); //CRC16 L precalculated for 256 zero values
+    writeI2CByte(512, 0xBB);//CRC16 H precalculated for 256 zero values
+    writeI2CByte(513, 0x41); //CRC16 L precalculated for 256 zero values
     
     }else {Serial.println ("CRC 16 is ok "); }
-   
+
   //Writes uint16_t [128] ( or uint8_t[256] cast ) array to Holding Registers
-  arrayToHoldingRegisters ( &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS ,buffer, ( sizeof (buffer) /sizeof (buffer[0])) );
+  arrayToHoldingRegisters ( &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS ,&buffer[0], ( sizeof (buffer) /sizeof (buffer[0])) );
 
   //Writes buffer[0] (holdingRegisters) to Relays 
   setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays buffer[0]
@@ -160,95 +167,59 @@ void loop() {
   // listen for incoming clients
   EthernetClient client = ethServer.available();
    
-  if (client) { // a new client connected
-
-    clientModbus(&client);
-    /*
-    
-    digitalWrite(LED_BUILTIN, HIGH ); //Client LED Client connected
-    Serial.println("\nClient connected !");
- 
-    // let the Modbus TCP accept the connection 
-    modbusTCPServer.accept(client);
- 
-   if(client.connected()) {// loop while the client is connected
-
-    modbusTCPServer.poll();//Poll Modbus TCP request while client connected
-
-    //Prints through the tty serial output each memory Register location
-    //void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int n);
-
-    debugRegister (READ_HOLDING_REG, &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS,buffer,  (sizeof(buffer) / sizeof (buffer[0])) );
-    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer,(sizeof(buffer) / sizeof (buffer[0])));  
-     
-    arrayToFRAM(0x50,(uint8_t *) buffer,  256);// Write uint16_t buffer ( uint8_t) buffer array to Fram 
-
-  //Calcul CRC16 from uint16_t buffer[128] pr uint8_t [256]
-   uint16_t crc=crc16 ((uint8_t *) buffer,  256);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
-      
-   Serial.print("CRC16 = 0x ");Serial.println (crc, HEX); //DEBUG print CRC16
-
-  //Save CRC16 in FRAM 0x51 ... memory abs 256 ,257 , relative 0x51:00 0x51:01
-  writeI2CByte(256, crc);
-  writeI2CByte(257, ( crc>>8) );   
-  
-  setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays buffer[0]
-
-    }
- 
-    Serial.println("\nClient disconnected");
-    digitalWrite(LED_BUILTIN, LOW ); //LED OFF CLIENT Client disconnected
-    */
+  if (client) { // a new  Modbus client is connected
+    clientModbus(&client); 
   }
 
   //S'il y a des changements aux entrées réelles (i2c MCP23017), affichez-les sur la console série.ttyACM0
   if ((readPort(&mcp,'A'))!= input ){
-    input=readPort(&mcp,'A');
-    writeInputs(&modbusTCPServer,INPUTS_ADDRESS,input);
-    //getInputs(&modbusTCPServer,INPUTS_ADDRESS,8);
+    input=readPort(&mcp,'A');//Read Real INPUTs from i2c bus expander MCP23017
+    writeInputs(&modbusTCPServer,INPUTS_ADDRESS,input);//Write in the INPUT MODBUS Registers
     debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer, (sizeof(buffer) / sizeof (buffer[0]))); 
-  
   }
   delay(500);
  
 }
 //*************************************************************************************** 
-void clientModbus(EthernetClient *client ){
+void clientModbus(EthernetClient *client ){//connected modbus client
 
     digitalWrite(LED_BUILTIN, HIGH ); //Client LED Client connected
-    Serial.println("\nClient connected !");
- 
+    Serial.println("\nClient connected !");//Serial PRINT Client Connected
+    
     // let the Modbus TCP accept the connection 
     modbusTCPServer.accept(*client);
  
    if((*client).connected()) {// loop while the client is connected
 
     modbusTCPServer.poll();//Poll Modbus TCP request while client connected
+    
+    //Prints through the tty serial and writes buffer..debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int n,uint16_t *buffer,size_t size){
+    
+    debugRegister (READ_HOLDING_REG, &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS,buffer,  (sizeof(buffer) / sizeof (buffer[0])) );//OUTs 0-127
+    //debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer,(sizeof(buffer) / sizeof (buffer[0])));  
+    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer,(sizeof(buffer) / sizeof (buffer[0]))); //INs 128-255 
+    
+    arrayToFRAM(0x50,(uint8_t *) buffer,  256);// Write uint16_t buffer ( uint8_t) buffer array to Fram  OUTs
+    arrayToFRAM(0x51,(uint8_t *) buffer+128,  256);// Write uint16_t buffer ( uint8_t) buffer array to Fram  INs 
+    
+    //Calcul CRC16 from uint16_t buffer[128] pr uint8_t [256]
+    //uint16_t crc=crc16 ((uint8_t *) buffer,  256);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
+    uint16_t crc=crc16 ((uint8_t *) buffer,  512);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
+    Serial.print("CRC16 = 0x ");Serial.println (crc, HEX); //DEBUG print CRC16
+    
+    //Save CRC16 in FRAM 0x51 ... memory abs 256 ,257 , relative 0x51:00 0x51:01
+    //writeI2CByte(256, crc);//0x51
+    //writeI2CByte(257, ( crc>>8) );//0x51    
 
-    //Prints through the tty serial output each memory Register location
-    //void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int n);
-
-    debugRegister (READ_HOLDING_REG, &modbusTCPServer,HOLD_REG_ADDRESS, N_HOLDING_REGISTERS,buffer,  (sizeof(buffer) / sizeof (buffer[0])) );
-    debugRegister (READ_INPUTS, &modbusTCPServer,INPUTS_ADDRESS, N_INPUTS,buffer,(sizeof(buffer) / sizeof (buffer[0])));  
-     
-    arrayToFRAM(0x50,(uint8_t *) buffer,  256);// Write uint16_t buffer ( uint8_t) buffer array to Fram 
-
-  //Calcul CRC16 from uint16_t buffer[128] pr uint8_t [256]
-   uint16_t crc=crc16 ((uint8_t *) buffer,  256);//Calcul CRC16 . NOTE If the buffer uint16_t measures 128 in uint8_t measures 256
-      
-   Serial.print("CRC16 = 0x ");Serial.println (crc, HEX); //DEBUG print CRC16
-
-  //Save CRC16 in FRAM 0x51 ... memory abs 256 ,257 , relative 0x51:00 0x51:01
-  writeI2CByte(256, crc);
-  writeI2CByte(257, ( crc>>8) );   
-  
-  setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays buffer[0]
+    writeI2CByte(512, crc);//0x52:00
+    writeI2CByte(513, ( crc>>8) );//0x52:00      
+    
+    setRelays( &mcp , ( (uint8_t*) &buffer[0] ) );//Physical outputs of the expander bus MCP23017 ...8 Coils (or Relays) buffer[0]
 
     }
  
     Serial.println("\nClient disconnected");
     digitalWrite(LED_BUILTIN, LOW ); //LED OFF CLIENT Client disconnected
 
-  
   
 }

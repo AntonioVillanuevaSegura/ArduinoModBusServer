@@ -95,7 +95,7 @@ void readFM24CL16(){
 //Reset all FM24CL16 FRAM memory to 0
 void resetFM24CL16 (){
   //for (int mem=0 ;mem<MEMORY_BLOCK*8;mem++){//Loop over ALL fram memory
-  for (int mem=0 ;mem<MEMORY_BLOCK*2;mem++){//Loop over 0x50 0x52 fram memory
+  for (int mem=0 ;mem<MEMORY_BLOCK*3;mem++){//Loop over 0x50 0x52 fram memory
     //Serial.print ("Reset mem pos. = ");Serial.println (mem);//DEBUG
     writeI2CByte(mem, 0);
    }
@@ -107,7 +107,7 @@ void arrayToFRAM(uint8_t address,uint8_t *matriz, int size){
   Wire.beginTransmission (address ); //Slave Address 0x5n , 0x50 | A2 A1 A0
   Wire.write(0x00);//First Address in FRAM bank 0 -256
   
-  while (size>0){//All bank 0-256
+  while (size>0){//All bank 0-255
     Wire.write( *matriz );//Data byte
     matriz++;//Pointer ++
     size--;//Array size --

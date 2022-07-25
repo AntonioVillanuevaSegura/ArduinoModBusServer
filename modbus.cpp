@@ -36,12 +36,6 @@ int writeInputs(ModbusTCPServer *modbusTCPServer ,int address,byte input){
 }
 
 //*************************************************************************************** 
-//The modbus client activates the relays, then we activate the expander bus outputs physical outputs of the expander bus MCP23017 ...8 Coils or Relays
-void setRelays(DFRobot_MCP23017 *mcp,uint8_t *outs ){//Physical outputs of the expander bus MCP23017 ...8 Coils or Relays
-  setPort(mcp,outs);//Expander MCP23017 Real outs 
-}
-
-//*************************************************************************************** 
 //Une fonction pour compléter le nombre de 0's dans une expression BINARIE  base=8 ou 16 p.e
 String zeroComplement(String number, int base){
   String zeros="";
@@ -89,17 +83,18 @@ void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int 
   switch (type){//type READ_COILS 0 ,READ_HOLDING_REG 1 ,READ_INPUTS 2
     
     case (READ_HOLDING_REG):{    
-      buffer+=size-1;//starts at the end of buffer i=n-1 !
+
+      //buffer+=size-1;//starts at the end of buffer i=n-1 ! only OUT buffer
+      buffer+= (size-1)/2;//starts at the end of buffer i=n-1 ! IN/OUT  buffer      
       
       for (int i=n-1;i>=0;i--){//Loop through all HOLDING_REG memory  locations
         long reg = (*modbusTCPServer).holdingRegisterRead(address+i);//long holdingRegisterRead(int address);    
 
         //Write uint16_t [128] register
-        *buffer=reg;//  > Write in buffer[128]= 16 holding_register
+        *buffer=reg;//  > Write in buffer[128] is a 16 bits holding_register
 
-       // tmp= String(reg,BIN);//Base BIN
         tmp= String(*buffer,BIN);//Base BIN
-        printRegister(tmp,address, i);
+        printRegister(tmp,address, i);////Print a 16-bit register through the serial port
         if (i%4==0){Serial.println();}//Ligne            
         buffer--;//Buffer ++ move one position
                  
@@ -107,10 +102,11 @@ void debugRegister (int type, ModbusTCPServer *modbusTCPServer,int address, int 
       break;    
     }
     
-    case (READ_INPUTS):{
-      for (int i=n-1;i>=0;i--){//Loop through all READ_INPUTS memory  locations      
+    case (READ_INPUTS):{//Loop through all INPUT_REG memory  locations
+      for (int i=n-1;i>=0;i--){//Loop through all READ_INPUTS memory  locations    
+  
         int valeur= (*modbusTCPServer).discreteInputRead(address+i);   
-        tmp=zeroComplement(String(valeur,BIN),16);
+        tmp=zeroComplement(String(valeur,BIN),16);////Print a 16-bit register through the serial port
         printRegister(tmp,address, i);
         if (i%4==0){Serial.println();}//Ligne         
       }   
